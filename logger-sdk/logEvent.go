@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -45,8 +46,17 @@ func newLogEvent(level logLevel, service string, writer *logWriter) *LogEvent {
 	}
 }
 
+// assigns message to the Log
 func (event *LogEvent) Msg(message string) {
 	event.log.Message = message
+
+	// push log to file
+	event.writer.WriteLog(event.log)
+}
+
+// assigns formatted message to the Log
+func (event *LogEvent) Msgf(format string, a ...any) {
+	event.log.Message = fmt.Sprintf(format, a...)
 
 	// push log to file
 	event.writer.WriteLog(event.log)
