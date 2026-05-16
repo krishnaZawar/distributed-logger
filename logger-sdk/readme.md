@@ -106,7 +106,3 @@ All logs are emitted in JSON format
   "message": "payment successful"
 }
 ```
-
-## Future Use
-
-1. Allow logging of extra metadata with the log
