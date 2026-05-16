@@ -129,3 +129,26 @@ func TestLogSerialization(t *testing.T) {
 		t.Fatal("expected serialized message field")
 	}
 }
+
+func TestLogEvent_WithMetadata(t *testing.T) {
+	event := &LogEvent{
+		log: &log{
+			Metadata: make(map[string]interface{}),
+		},
+	}
+
+	key := "user_id"
+	val := 123
+
+	result := event.WithMetadata(key, val)
+
+	// assert return value (method chaining)
+	if result != event {
+		t.Errorf("expected same LogEvent pointer to be returned")
+	}
+
+	// assert metadata stored correctly
+	if event.log.Metadata[key] != val {
+		t.Errorf("expected metadata %s=%v, got %v", key, val, event.log.Metadata["user_id"])
+	}
+}

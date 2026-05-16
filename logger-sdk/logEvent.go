@@ -19,10 +19,11 @@ const (
 
 // The log format to be emitted by the services
 type log struct {
-	Level       logLevel  `json:"level"`     // represents the log level
-	Timestamp   time.Time `json:"timestamp"` // represents the log creation time
-	ServiceName string    `json:"service"`   // represents the service that emitted the log
-	Message     string    `json:"message"`   // the log message
+	Level       logLevel               `json:"level"`              // represents the log level
+	Timestamp   time.Time              `json:"timestamp"`          // represents the log creation time
+	ServiceName string                 `json:"service"`            // represents the service that emitted the log
+	Metadata    map[string]interface{} `json:"metadata,omitempty"` // holds extra log context
+	Message     string                 `json:"message"`            // the log message
 }
 
 // The event emitted by the logger functions
@@ -41,6 +42,7 @@ func newLogEvent(level logLevel, service string, writer *logWriter) *LogEvent {
 			Level:       level,
 			Timestamp:   time.Now(),
 			ServiceName: service,
+			Metadata:    map[string]interface{}{},
 		},
 		writer: writer,
 	}
@@ -60,4 +62,10 @@ func (event *LogEvent) Msgf(format string, a ...any) {
 
 	// push log to file
 	event.writer.WriteLog(event.log)
+}
+
+// allows the user to add extra context for the log to capture
+func (event *LogEvent) WithMetadata(key string, value interface{}) *LogEvent {
+	event.log.Metadata[key] = value
+	return event
 }
