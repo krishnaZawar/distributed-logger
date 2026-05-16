@@ -14,6 +14,7 @@ It provides leveled logging (`debug`, `info`, `warn`, `error`) with JSON output 
     - info
     - warn
     - error
+- Provision of logging metadata for more context aware logging usage
 - Thread-safe concurrent writes
 - Simple fluent API
 - Service-based log tagging
@@ -71,10 +72,19 @@ You can format log messages using `Msgf`
 log.Info().Msgf("user %d logged in", userID)
 ```
 
+### Logging with Metadata
+
+You can add extra metadata to the logs for more context aware logging
+
+```go
+log.Info().WithMetadata("user", userID).Msg("successful purchase order placed")
+```
+
 ### Log Structure
 
 All logs are emitted in JSON format
 
+#### Without Metadata
 ```json
 {
   "level": "info",
@@ -84,6 +94,15 @@ All logs are emitted in JSON format
 }
 ```
 
-## Future Use
-
-1. Allow logging of extra metadata with the log
+#### With Metadata
+```json
+{
+  "level": "info",
+  "timestamp": "2026-05-16T10:00:00Z",
+  "service": "payment-service",
+  "metadata": {
+    "user" : 123
+  },
+  "message": "payment successful"
+}
+```
