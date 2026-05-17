@@ -1,0 +1,9 @@
+# holds the array of path of log files to monitor
+logFiles:
+    - "../logs/auth-srv.ndjson" 
+
+# holds the filepath to which the logging agent writes logs related to agent health and working
+#
+# Note: should avoid using the logging agent path in logFiles, avoid circular tracking of logs.
+# This might lead to unexpected agent functioning
+agentLogFile: "../logs/logging-agent.ndjson"
