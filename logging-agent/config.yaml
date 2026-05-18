@@ -20,5 +20,5 @@ logDelivery:
     # expected status code response
     expectedStatusCode: 200
 
-# indicates how many logs will be collected and sent to the endpoint in every iteration
+# indicates how many logs will be collected and sent to the endpoint for every tracked file in each iteration
 logReadBatchSize: 50
