@@ -21,7 +21,7 @@ type LogDeliveryDetails struct {
 }
 
 func readConfigYaml() *Config {
-	data, err := os.ReadFile("./internal/config/config.yaml")
+	data, err := os.ReadFile("./config.yaml")
 	if err != nil {
 		panic(err)
 	}
