@@ -8,8 +8,16 @@ import (
 
 // holds the config/config.yaml data
 type Config struct {
-	LogFiles     []string `yaml:"logFiles"`
-	AgentLogFile string   `yaml:"agentLogFile"`
+	LogFiles         []string           `yaml:"logFiles"`
+	AgentLogFile     string             `yaml:"agentLogFile"`
+	DeliveryDetails  LogDeliveryDetails `yaml:"logDelivery"`
+	LogReadBatchSize int                `yaml:"logReadBatchSize"`
+}
+
+type LogDeliveryDetails struct {
+	Method             string `yaml:"method"`
+	Endpoint           string `yaml:"endpoint"`
+	ExpectedStatusCode int    `yaml:"expectedStatusCode"`
 }
 
 func readConfigYaml() *Config {
@@ -23,6 +31,10 @@ func readConfigYaml() *Config {
 	err = yaml.Unmarshal(data, cfg)
 	if err != nil {
 		panic(err)
+	}
+
+	if cfg.DeliveryDetails.Method == "" || cfg.DeliveryDetails.Endpoint == "" {
+		panic("Error: log delivery details should be configured")
 	}
 
 	return cfg

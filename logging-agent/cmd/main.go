@@ -6,8 +6,5 @@ import (
 
 func main() {
 	agent := entity.NewLoggingAgent()
-	go agent.Read()
-
-	// keeps process alive forever
-	select {}
+	agent.Read()
 }

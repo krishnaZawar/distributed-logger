@@ -1,9 +1,11 @@
 package entity
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -32,7 +34,6 @@ func NewLoggingAgent() *LoggingAgent {
 		}
 		if err == nil {
 			err = json.Unmarshal(data, &offsets)
-			fmt.Println(string(data))
 			if err != nil {
 				panic(err)
 			}
@@ -83,10 +84,10 @@ func (agent *LoggingAgent) Read() {
 
 				lastOffset := offset
 
-				logs := []Log{}
+				logs := []log{}
 
 				for {
-					var entry Log
+					var entry log
 					err := scanner.Decode(&entry)
 					if err == io.EOF {
 						break
@@ -98,34 +99,39 @@ func (agent *LoggingAgent) Read() {
 
 					logs = append(logs, entry)
 
-					lastOffset = scanner.InputOffset()
+					lastOffset = offset + scanner.InputOffset()
 
-					if len(logs) == base.LogReadBatchSize {
+					if len(logs) == config.Get().LogReadBatchSize {
 						break
 					}
 				}
 
-				// call delivery endpoint
-				fmt.Println(logs)
+				// deliver the logs
+				// The offsets should not update until the logs are delivered
+				// This guarantees atleast once delivery and guarantees log delivery
+				err = agent.deliverLogs(logs)
+				if err != nil {
+					continue
+				}
 
 				agent.mu.Lock()
 				agent.offsets[filepath] = lastOffset
 				agent.mu.Unlock()
 
-				time.Sleep(2 * time.Second)
+				time.Sleep(base.LogCollectionInterval)
 			}
 		}(filepath, reader)
 	}
 	for {
-		// persist the offset
+		// persist the offset periodically
 		agent.persistOffset()
 
-		time.Sleep(2 * time.Second)
+		time.Sleep(base.OffsetUpdateInterval)
 	}
 }
 
 // persists the read offset to restart from the point the agent left on crashes.
-// It also implements a single retry mechanism for more durable offset persistence.
+// It also implements a retry mechanism for more durable offset persistence.
 //
 // If the offset does not persist even after retry, it will retry on the next read call but will not crash the agent
 func (agent *LoggingAgent) persistOffset() {
@@ -139,15 +145,22 @@ func (agent *LoggingAgent) persistOffset() {
 	}
 	err = agent.writeOffsetToFile(writeData)
 	if err != nil {
-		time.Sleep(base.OffsetRetryTimeOut)
-		agent.logger.Info().Msg("Retry offset persistence for durability")
-		err = agent.writeOffsetToFile(writeData)
-		if err != nil {
-			agent.logger.Error().Msgf("Error: could not update offset data: %s", err.Error())
+		for i := 1; i <= base.OffsetRetryCount; i++ {
+			time.Sleep(base.OffsetRetryTimeOut)
+			agent.logger.Info().Msgf("Retry offset persistence count: %d", i)
+			err = agent.writeOffsetToFile(writeData)
+			if err == nil {
+				agent.logger.Info().Msgf("Offset Persistence successful after %d retries", i)
+				return
+			}
 		}
+		agent.logger.Error().Msgf("Error: could not update offset data after %d retries: %s", base.OffsetRetryCount, err.Error())
 	}
 }
 
+// writes the offset to the file
+//
+// returns error on failure
 func (agent *LoggingAgent) writeOffsetToFile(writeData []byte) error {
 	file, err := os.OpenFile(base.OffsetFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
@@ -169,4 +182,58 @@ func (agent *LoggingAgent) writeOffsetToFile(writeData []byte) error {
 		return err
 	}
 	return nil
+}
+
+// sends the logs to the configured endpoint in config.yaml.
+// It also implements a retry mechanism for more durable log delivery.
+//
+// returns an error on failure of delivery
+func (agent *LoggingAgent) deliverLogs(logs []log) error {
+	logData, err := json.Marshal(logs)
+	if err != nil {
+		agent.logger.Error().Msgf("Error: could not marshal logs: %s", err.Error())
+		// no retry for marshalling error as it is consistent and will result in the same path
+		// ideally should not occur
+		return err
+	}
+	expectedStatusCode := config.Get().DeliveryDetails.ExpectedStatusCode
+	resp, err := agent.callDeliveryEndpoint(logData)
+	if err != nil || resp.StatusCode != expectedStatusCode {
+		for i := 1; i <= base.DeliveryRetryCount; i++ {
+			time.Sleep(base.DeliveryRetryTimeout)
+			agent.logger.Info().Msgf("Log delivery retry count: %d", i)
+			resp, err = agent.callDeliveryEndpoint(logData)
+			if err == nil && resp.StatusCode == expectedStatusCode {
+				agent.logger.Info().Msgf("Successfully delivered Logs after retry count: %d", i)
+				return nil
+			}
+		}
+		if err == nil {
+			err = fmt.Errorf("expected status code not found, expectedStatusCode: %d, statusCode found: %d", expectedStatusCode, resp.StatusCode)
+		}
+		agent.logger.Error().Msgf("Error: could not deliver logs after %d retries: %s", base.DeliveryRetryCount, err.Error())
+		return err
+	}
+	return nil
+}
+
+var client http.Client = http.Client{}
+
+// calls the endpoint configured in config.yaml
+//
+// returns error on failure of delivery
+func (agent *LoggingAgent) callDeliveryEndpoint(logData []byte) (*http.Response, error) {
+	cfg := config.Get()
+	req, err := http.NewRequest(cfg.DeliveryDetails.Method, cfg.DeliveryDetails.Endpoint, bytes.NewBuffer(logData))
+	req.Header.Set("Content-Type", "application/json")
+	if err != nil {
+		agent.logger.Error().Msgf("Error: Could not form request: %s", err.Error())
+		return nil, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		agent.logger.Error().Msgf("%s", err.Error())
+		return nil, err
+	}
+	return resp, nil
 }

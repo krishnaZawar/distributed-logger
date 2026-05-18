@@ -32,3 +32,5 @@ go.work.sum
 # .vscode/
 logs/
 services/
+
+logging-agent/offsets.json

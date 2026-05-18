@@ -7,10 +7,17 @@ const (
 )
 
 const (
-	OffsetFilePath     = "offsets.json"
-	OffsetRetryTimeOut = time.Second
+	OffsetUpdateInterval = 5 * time.Second
+	OffsetFilePath       = "offsets.json"
+	OffsetRetryTimeOut   = time.Second
+	OffsetRetryCount     = 1
 )
 
 const (
-	LogReadBatchSize = 50
+	LogCollectionInterval = 2 * time.Second
+)
+
+const (
+	DeliveryRetryCount   = 1
+	DeliveryRetryTimeout = time.Second
 )

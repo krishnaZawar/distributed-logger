@@ -1,9 +1,24 @@
+# Note: All these fields should compulsarily set
+
 # holds the array of path of log files to monitor
 logFiles:
     - "../logs/auth-srv.ndjson" 
+    - "../logs/payment-srv.ndjson" 
 
 # holds the filepath to which the logging agent writes logs related to agent health and working
 #
 # Note: should avoid using the logging agent path in logFiles, avoid circular tracking of logs.
 # This might lead to unexpected agent functioning
 agentLogFile: "../logs/logging-agent.ndjson"
+
+# This holds the configuration of the endpoint to which the logs should be sent
+logDelivery:
+    # http Method to use
+    method: "POST"
+    # the URL endpoint to send the logs to
+    endpoint: "http://localhost:3000/logs"
+    # expected status code response
+    expectedStatusCode: 200
+
+# indicates how many logs will be collected and sent to the endpoint in every iteration
+logReadBatchSize: 50
