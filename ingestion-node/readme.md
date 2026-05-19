@@ -46,6 +46,13 @@ go run cmd/main.go
 - **Local log persistence**  
   Logs are persisted locally to a file rather than being sent to external storage systems or message queues. This approach was chosen because the expected log volume is low, and the system is intended for simplicity and educational use. Introducing message queues or distributed storage at this stage would add unnecessary complexity without providing proportional benefit.
 
+## Ordering Guarantee
+
+- **Per-agent ordering guarantee**  
+  The ingestion node preserves log ordering on a per-agent basis. This means that logs sent from a single logging agent are processed and stored in the order they are received.
+
+  Ordering is not guaranteed across different agents, as each agent operates independently and may send logs concurrently. This design ensures simplicity while maintaining correctness within the scope of individual log sources.
+
 ## Future Scope of Development
 
 - **Extended configuration options**
