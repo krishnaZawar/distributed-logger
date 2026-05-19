@@ -1,0 +1,4 @@
+# Note: All these fields should be compulsarily set
+
+# The file where the logs from all the logging agents should be persisted
+logFile: "<your-log-file>"
