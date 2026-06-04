@@ -25,11 +25,8 @@ Before starting the agent, ensure `config.yaml` is properly set up:
   - Ensure the files are in `.ndjson` format (invalid formats may lead to unexpected behavior)
 - Specify the path for the agent’s internal log file
 - Configure the remote endpoint details for log delivery
-- Set the batch size for processing logs per file
 
-For more information on this, read the config.yaml file
-
-**Note: All configuration values must be set before starting the agent.**
+For more information on how to configure these and other optional fields, read the config.yaml file
 
 
 ---
