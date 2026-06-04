@@ -9,6 +9,10 @@ This project is designed as a learning-oriented implementation of a scalable log
 ### 1. Logging SDK
 The Logging SDK is integrated directly into application services and acts as the primary interface for emitting logs.
 
+#### Performance benchmark
+- The logger is capable of writing `150k-200k logs/sec` to `.ndjson` file
+- The logger is capable of writing  `40k-50k logs/sec` to `stdout`
+
 #### Responsibilities
 - Generate structured logs
 - Support log levels

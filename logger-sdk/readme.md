@@ -4,6 +4,11 @@ A lightweight, thread-safe structured logging package for Go services.
 
 It provides leveled logging (`debug`, `info`, `warn`, `error`) with JSON output and a simple fluent API designed for standardized logging across multiple services.
 
+## Performance benchmark
+
+- The logger is capable of writing `150k-200k logs/sec` to `.ndjson` file
+- The logger is capable of writing  `40k-50k logs/sec` to `stdout`
+
 ---
 
 ## Features
