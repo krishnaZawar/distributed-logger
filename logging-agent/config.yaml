@@ -1,9 +1,19 @@
-# Note: All these fields should compulsarily set
+# IMPORTANT NOTE!
+# 
+# The fields that should be set compulsarily
+# - agentLogFile
+# - logDelivery
+#       - method
+#       - endpoint
+#       - expectedStatusCode
+# 
+# All the time related values are considered in milliseconds
+# All the numeric values should be integers
 
 # holds the array of path of log files to monitor
 logFiles:
-    - "../logs/auth-srv.ndjson" 
-    - "../logs/payment-srv.ndjson" 
+    - "<logfile1.ndjson>" 
+    - "<logfile2.ndjson>" 
 
 # holds the filepath to which the logging agent writes logs related to agent health and working
 #
@@ -16,9 +26,43 @@ logDelivery:
     # http Method to use
     method: "POST"
     # the URL endpoint to send the logs to
-    endpoint: "http://localhost:3000/logs"
+    endpoint: "http://localhost:3000/ingest"
     # expected status code response
     expectedStatusCode: 200
 
-# indicates how many logs will be collected and sent to the endpoint for every tracked file in each iteration
-logReadBatchSize: 50
+    # details regarding the retry for log delivery
+    retryConfiguration:
+        # the interval after which the agent will retry to deliver the logs to the endpoint on failure
+        # default value is 1s
+        timeoutMs: 1000
+
+        # indicates how many times the agent will retry to send the logs to the endpoint after failure
+        # default value is 1
+        count: 1
+
+
+# configurations related to log collection
+logCollection:
+    # indicates how many logs will be collected and sent to the endpoint for every tracked file in each iteration
+    # default value is 100 logs per batch
+    batchSize: 100
+
+    # the interval after which the agent periodically reads the logs from the files
+    # default value is 0ms
+    intervalMs: 0
+
+
+# configurations related to offset persistence
+offsetPersistence:
+    # the interval after which the file offsets will be persisted to the file for crash safety and restart from where it left
+    # default value is 2s
+    updateIntervalMs: 2000
+
+    retryConfiguration:
+        # the interval after which the agent will retry to persist the offsets on failure
+        # default value is 1s
+        timeoutMs: 1000
+
+        # indicates how many times the agent will retry to persist the offset after failure
+        # default value is 1
+        count: 1

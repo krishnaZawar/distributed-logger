@@ -69,6 +69,7 @@ func NewLoggingAgent() *LoggingAgent {
 // Read the logs from the file from the offset it has read till
 func (agent *LoggingAgent) Read() {
 	for filepath, reader := range agent.readers {
+		cfg := config.Get()
 		go func(filepath string, reader io.ReadSeeker) {
 			for {
 				agent.mu.RLock()
@@ -101,7 +102,7 @@ func (agent *LoggingAgent) Read() {
 
 					lastOffset = offset + scanner.InputOffset()
 
-					if len(logs) == config.Get().LogReadBatchSize {
+					if len(logs) == cfg.LogCollectionDetails.CollectionBatchSize {
 						break
 					}
 				}
@@ -118,15 +119,16 @@ func (agent *LoggingAgent) Read() {
 				agent.offsets[filepath] = lastOffset
 				agent.mu.Unlock()
 
-				time.Sleep(base.LogCollectionInterval)
+				time.Sleep(time.Duration(cfg.LogCollectionDetails.CollectionIntervalMs) * time.Millisecond)
 			}
 		}(filepath, reader)
 	}
 	for {
+		cfg := config.Get()
 		// persist the offset periodically
 		agent.persistOffset()
 
-		time.Sleep(base.OffsetUpdateInterval)
+		time.Sleep(time.Duration(cfg.OffsetPersistenceDetails.UpdateIntervalMs) * time.Millisecond)
 	}
 }
 
@@ -143,10 +145,11 @@ func (agent *LoggingAgent) persistOffset() {
 	if err != nil {
 		return
 	}
+	cfg := config.Get()
 	err = agent.writeOffsetToFile(writeData)
 	if err != nil {
-		for i := 1; i <= base.OffsetRetryCount; i++ {
-			time.Sleep(base.OffsetRetryTimeOut)
+		for i := 1; i <= cfg.OffsetPersistenceDetails.RetryDetails.Count; i++ {
+			time.Sleep(time.Duration(cfg.OffsetPersistenceDetails.RetryDetails.TimeoutMs) * time.Millisecond)
 			agent.logger.Info().Msgf("Retry offset persistence count: %d", i)
 			err = agent.writeOffsetToFile(writeData)
 			if err == nil {
@@ -154,7 +157,7 @@ func (agent *LoggingAgent) persistOffset() {
 				return
 			}
 		}
-		agent.logger.Error().Msgf("Error: could not update offset data after %d retries: %s", base.OffsetRetryCount, err.Error())
+		agent.logger.Error().Msgf("Error: could not update offset data after %d retries: %s", cfg.OffsetPersistenceDetails.RetryDetails.Count, err.Error())
 	}
 }
 
@@ -196,11 +199,12 @@ func (agent *LoggingAgent) deliverLogs(logs []log) error {
 		// ideally should not occur
 		return err
 	}
-	expectedStatusCode := config.Get().DeliveryDetails.ExpectedStatusCode
+	cfg := config.Get()
+	expectedStatusCode := cfg.LogDeliveryDetails.ExpectedStatusCode
 	resp, err := agent.callDeliveryEndpoint(logData)
 	if err != nil || resp.StatusCode != expectedStatusCode {
-		for i := 1; i <= base.DeliveryRetryCount; i++ {
-			time.Sleep(base.DeliveryRetryTimeout)
+		for i := 1; i <= cfg.LogDeliveryDetails.RetryDetails.Count; i++ {
+			time.Sleep(time.Duration(cfg.LogDeliveryDetails.RetryDetails.TimeoutMs) * time.Millisecond)
 			agent.logger.Info().Msgf("Log delivery retry count: %d", i)
 			resp, err = agent.callDeliveryEndpoint(logData)
 			if err == nil && resp.StatusCode == expectedStatusCode {
@@ -211,7 +215,7 @@ func (agent *LoggingAgent) deliverLogs(logs []log) error {
 		if err == nil {
 			err = fmt.Errorf("expected status code not found, expectedStatusCode: %d, statusCode found: %d", expectedStatusCode, resp.StatusCode)
 		}
-		agent.logger.Error().Msgf("Error: could not deliver logs after %d retries: %s", base.DeliveryRetryCount, err.Error())
+		agent.logger.Error().Msgf("Error: could not deliver logs after %d retries: %s", cfg.LogDeliveryDetails.RetryDetails.Count, err.Error())
 		return err
 	}
 	return nil
@@ -224,7 +228,7 @@ var client http.Client = http.Client{}
 // returns error on failure of delivery
 func (agent *LoggingAgent) callDeliveryEndpoint(logData []byte) (*http.Response, error) {
 	cfg := config.Get()
-	req, err := http.NewRequest(cfg.DeliveryDetails.Method, cfg.DeliveryDetails.Endpoint, bytes.NewBuffer(logData))
+	req, err := http.NewRequest(cfg.LogDeliveryDetails.Method, cfg.LogDeliveryDetails.Endpoint, bytes.NewBuffer(logData))
 	req.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		agent.logger.Error().Msgf("Error: Could not form request: %s", err.Error())
